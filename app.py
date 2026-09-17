@@ -8,7 +8,7 @@ UPLOAD_DIR = "uploads"
 INSTRUCTOR_PASSWORD = "tye6632"  # 👈 Change your instructor password here!
 
 if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def load_data():
     required_columns = [
