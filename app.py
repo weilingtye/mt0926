@@ -89,22 +89,47 @@ user_role = st.sidebar.radio("Mode:", ["Student Portal", "Instructor Dashboard"]
 if user_role == "Student Portal":
     st.title("🎓 Student Submission & Registration Portal")
     
-    st.subheader("Step 1: Group & Student Identification")
-    c1, c2 = st.columns(2)
-    with c1:
-        group_num = st.number_input("Enter Your Group Number (e.g., 1 to 100):", min_value=1, max_value=100, value=1)
-        group_id = f"Group {group_num}"
-        student_id = st.text_input("Enter Student ID:")
-    with c2:
-        student_name = st.text_input("Enter Full Name:")
-        company_name = st.text_input("Selected Company Name (Must be globally unique):")
-        industry_name = st.text_input("Company Industry:")
+   import streamlit as st
+import pandas as pd
 
-    # Global Duplicate Company Check
-    if company_name.strip():
-        existing_companies = df[df["Student_ID"] != student_id]["Part_A_Company"].dropna().str.strip().str.lower().tolist()
-        if company_name.strip().lower() in existing_companies:
-            st.error(f"❌ Critical Flag: The company '{company_name}' is already taken by another student in another group! Please choose a different company.")
+# --- STUDENT PORTAL: COMPANY UPDATE LOGIC ---
+st.subheader("Step 1: Student Identification & Company Selection")
+
+c1, c2 = st.columns(2)
+with c1:
+    group_num = st.number_input("Enter Your Group Number:", min_value=1, max_value=100, value=1)
+    group_id = f"Group {group_num}"
+    student_id = st.text_input("Enter Student ID:").strip()
+
+with c2:
+    student_name = st.text_input("Enter Full Name:").strip()
+    
+    # Check if student already exists in database
+    existing_record = df[df["Student_ID"] == student_id] if (not df.empty and student_id) else pd.DataFrame()
+    
+    current_company = ""
+    if not existing_record.empty:
+        current_company = existing_record.iloc[0]["Part_A_Company"]
+        st.info(f"ℹ️ Currently registered company: **{current_company}**")
+
+    # Input for new or updated company
+    company_name = st.text_input(
+        "Company Name (Type a new name to change your selection):", 
+        value=current_company
+    ).strip()
+    
+    industry_name = st.text_input("Company Industry:").strip()
+
+# --- DUPLICATE COMPANY CHECK ---
+if company_name and not df.empty:
+    # Look for duplicates excluding the CURRENT student's own record
+    other_students_df = df[df["Student_ID"] != student_id]
+    taken_companies = other_students_df["Part_A_Company"].dropna().str.strip().str.lower().tolist()
+    
+    if company_name.lower() in taken_companies:
+        st.error(f"❌ **Company Unavailable:** '{company_name}' is already taken by another student!")
+    elif current_company and company_name.lower() != current_company.lower():
+        st.success(f"🔄 You are changing your company from **{current_company}** to **{company_name}**.")
 
     st.markdown("---")
     st.subheader("Step 2: Assignment Document Uploads")
