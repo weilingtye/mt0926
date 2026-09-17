@@ -1,23 +1,21 @@
 import streamlit as st
 import pandas as pd
 import os
+
 def check_password():
     """Returns True if the user entered the correct password."""
-    # Check if user is already authenticated in this session
     if st.session_state.get("password_correct", False):
         return True
 
-    # Show password input screen
     st.title("🔒 Student Access Portal")
     st.write("Please enter the class password to access the app.")
 
     user_password = st.text_input("Enter Password", type="password")
 
     if st.button("Log In"):
-        # Fetch the password stored in Streamlit Secrets
         if user_password == st.secrets.get("APP_PASSWORD", "default_pass"):
             st.session_state["password_correct"] = True
-            st.rerun()  # Refresh app to load main content
+            st.rerun()
         else:
             st.error("❌ Incorrect password. Please try again.")
 
@@ -25,12 +23,12 @@ def check_password():
 
 # Protect the main app content
 if not check_password():
-    st.stop()  # Stop execution here until password is correct
+    st.stop()
     
 # --- CONFIGURATION ---
 DATA_FILE = "student_tracker.csv"
 UPLOAD_DIR = "uploads"
-INSTRUCTOR_PASSWORD = "tye6632"  # 👈 Change your instructor password here!
+INSTRUCTOR_PASSWORD = "tye6632"
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -46,7 +44,6 @@ def load_data():
     
     if os.path.exists(DATA_FILE):
         df = pd.read_csv(DATA_FILE)
-        # Ensure database schema alignment across version updates
         for col in required_columns:
             if col not in df.columns:
                 if "Marks" in col:
@@ -89,47 +86,45 @@ user_role = st.sidebar.radio("Mode:", ["Student Portal", "Instructor Dashboard"]
 if user_role == "Student Portal":
     st.title("🎓 Student Submission & Registration Portal")
     
-   import streamlit as st
-import pandas as pd
+    # --- YOUR NEW SNIPPET STARTS HERE ---
+    st.subheader("Step 1: Student Identification & Company Selection")
 
-# --- STUDENT PORTAL: COMPANY UPDATE LOGIC ---
-st.subheader("Step 1: Student Identification & Company Selection")
+    c1, c2 = st.columns(2)
+    with c1:
+        group_num = st.number_input("Enter Your Group Number:", min_value=1, max_value=100, value=1)
+        group_id = f"Group {group_num}"
+        student_id = st.text_input("Enter Student ID:").strip()
 
-c1, c2 = st.columns(2)
-with c1:
-    group_num = st.number_input("Enter Your Group Number:", min_value=1, max_value=100, value=1)
-    group_id = f"Group {group_num}"
-    student_id = st.text_input("Enter Student ID:").strip()
+    with c2:
+        student_name = st.text_input("Enter Full Name:").strip()
+        
+        # Check if student already exists in database
+        existing_record = df[df["Student_ID"] == student_id] if (not df.empty and student_id) else pd.DataFrame()
+        
+        current_company = ""
+        if not existing_record.empty:
+            current_company = existing_record.iloc[0]["Part_A_Company"]
+            st.info(f"ℹ️ Currently registered company: **{current_company}**")
 
-with c2:
-    student_name = st.text_input("Enter Full Name:").strip()
-    
-    # Check if student already exists in database
-    existing_record = df[df["Student_ID"] == student_id] if (not df.empty and student_id) else pd.DataFrame()
-    
-    current_company = ""
-    if not existing_record.empty:
-        current_company = existing_record.iloc[0]["Part_A_Company"]
-        st.info(f"ℹ️ Currently registered company: **{current_company}**")
+        # Input for new or updated company
+        company_name = st.text_input(
+            "Company Name (Type a new name to change your selection):", 
+            value=current_company
+        ).strip()
+        
+        industry_name = st.text_input("Company Industry:").strip()
 
-    # Input for new or updated company
-    company_name = st.text_input(
-        "Company Name (Type a new name to change your selection):", 
-        value=current_company
-    ).strip()
-    
-    industry_name = st.text_input("Company Industry:").strip()
-
-# --- DUPLICATE COMPANY CHECK ---
-if company_name and not df.empty:
-    # Look for duplicates excluding the CURRENT student's own record
-    other_students_df = df[df["Student_ID"] != student_id]
-    taken_companies = other_students_df["Part_A_Company"].dropna().str.strip().str.lower().tolist()
-    
-    if company_name.lower() in taken_companies:
-        st.error(f"❌ **Company Unavailable:** '{company_name}' is already taken by another student!")
-    elif current_company and company_name.lower() != current_company.lower():
-        st.success(f"🔄 You are changing your company from **{current_company}** to **{company_name}**.")
+    # --- DUPLICATE COMPANY CHECK ---
+    if company_name and not df.empty:
+        # Look for duplicates excluding the CURRENT student's own record
+        other_students_df = df[df["Student_ID"] != student_id]
+        taken_companies = other_students_df["Part_A_Company"].dropna().str.strip().str.lower().tolist()
+        
+        if company_name.lower() in taken_companies:
+            st.error(f"❌ **Company Unavailable:** '{company_name}' is already taken by another student!")
+        elif current_company and company_name.lower() != current_company.lower():
+            st.success(f"🔄 You are changing your company from **{current_company}** to **{company_name}**.")
+    # --- YOUR NEW SNIPPET ENDS HERE ---
 
     st.markdown("---")
     st.subheader("Step 2: Assignment Document Uploads")
@@ -170,7 +165,7 @@ if company_name and not df.empty:
             df.loc[idx, "Part_C_File"] = path_c
             
             for col in ["Part_A_Marks", "Part_B_Marks", "Part_C_Marks"]:
-                if pd.isna(df.loc[idx, col]):
+                if idx not in df.index or pd.isna(df.loc[idx, col]):
                     df.loc[idx, col] = 0.0
 
             if path_b:
@@ -196,19 +191,16 @@ if company_name and not df.empty:
 else:
     st.title("🔒 Instructor Access Portal")
     
-    # Password Verification Prompt
     pwd_input = st.text_input("Enter Instructor Password to Unlock Dashboard:", type="password")
     
     if pwd_input == INSTRUCTOR_PASSWORD:
         st.success("🔓 Password Verified! Welcome, Instructor.")
         st.markdown("---")
         
-        # --- COMPLIANCE & NOTIFICATION ENGINE ---
         st.header("🚨 System Compliance & Flags Notification Center")
 
         flags = []
 
-        # Check 1: Duplicate Companies Globally
         valid_companies = df["Part_A_Company"].dropna().str.strip().str.lower()
         company_counts = valid_companies[valid_companies != ""].value_counts()
         duplicates = company_counts[company_counts > 1].index.tolist()
@@ -217,7 +209,6 @@ else:
             s_list = ", ".join([f"{r['Student_Name']} ({r['Group_ID']})" for _, r in dup_students.iterrows()])
             flags.append(f"🚩 **DUPLICATE COMPANY ALERT:** '{dup.title()}' selected by multiple students: {s_list}")
 
-        # Check 2: Individual Missing Files (Part A & C)
         for _, row in df.iterrows():
             missing_parts = []
             if not str(row["Part_A_File"]).strip() or pd.isna(row["Part_A_File"]): missing_parts.append("Part A")
@@ -226,7 +217,6 @@ else:
             if missing_parts:
                 flags.append(f"⚠️ **MISSING INDIVIDUAL FILE ALERT:** {row['Student_Name']} ({row['Student_ID']}, {row['Group_ID']}) missing: {', '.join(missing_parts)}")
 
-        # Check 3: Group Missing Files (Part B & Appendix) and 2-Industry Rule
         for g_id, g_data in df.groupby("Group_ID"):
             first_row = g_data.iloc[0]
             missing_group_files = []
@@ -240,7 +230,6 @@ else:
             if len(g_data) >= 3 and u_inds != 2:
                 flags.append(f"⚠️ **GROUP INDUSTRY RULE ALERT:** {g_id} has {u_inds} unique industries selected (Exactly 2 required).")
 
-        # Render Notifications
         if flags:
             for flag in flags:
                 st.warning(flag)
@@ -249,7 +238,6 @@ else:
 
         st.markdown("---")
 
-        # --- GROUP GRADING & TRACKING ---
         st.header("📋 Group Grading & Submission Management")
         
         all_groups = sorted(df["Group_ID"].unique()) if len(df) > 0 else ["Group 1"]
