@@ -1,7 +1,32 @@
 import streamlit as st
 import pandas as pd
 import os
+def check_password():
+    """Returns True if the user entered the correct password."""
+    # Check if user is already authenticated in this session
+    if st.session_state.get("password_correct", False):
+        return True
 
+    # Show password input screen
+    st.title("🔒 Student Access Portal")
+    st.write("Please enter the class password to access the app.")
+
+    user_password = st.text_input("Enter Password", type="password")
+
+    if st.button("Log In"):
+        # Fetch the password stored in Streamlit Secrets
+        if user_password == st.secrets.get("APP_PASSWORD", "default_pass"):
+            st.session_state["password_correct"] = True
+            st.rerun()  # Refresh app to load main content
+        else:
+            st.error("❌ Incorrect password. Please try again.")
+
+    return False
+
+# Protect the main app content
+if not check_password():
+    st.stop()  # Stop execution here until password is correct
+    
 # --- CONFIGURATION ---
 DATA_FILE = "student_tracker.csv"
 UPLOAD_DIR = "uploads"
